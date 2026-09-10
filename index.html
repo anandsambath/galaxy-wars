@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Meteor Dodge: Galaxy Wars</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  background:#050713;
+  color:white;
+  font-family:Arial,sans-serif;
+  overflow:hidden;
+  touch-action:none;
+}
+
+#game{
+  width:100vw;
+  height:100vh;
+  max-width:650px;
+  margin:auto;
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 20% 20%,white 1px,transparent 2px),
+    radial-gradient(circle at 70% 50%,#8da0ff 1px,transparent 2px),
+    radial-gradient(circle at 40% 80%,white 1px,transparent 2px),
+    linear-gradient(#050713,#151b45);
+  background-size:100px 100px,150px 150px,200px 200px,100% 100%;
+}
+
+#hud{
+  position:absolute;
+  top:10px;
+  left:0;
+  width:100%;
+  padding:8px;
+  display:flex;
+  justify-content:space-around;
+  z-index:20;
+  font-size:15px;
+  font-weight:bold;
+  background:rgba(0,0,0,.2);
+}
+
+#player{
+  position:absolute;
+  width:55px;
+  height:60px;
+  bottom:85px;
+  left:50%;
+  transform:translateX(-50%);
+  background:linear-gradient(#00eaff,#356cff);
+  clip-path:polygon(50% 0%,100% 100%,50% 78%,0% 100%);
+  filter:drop-shadow(0 0 12px #00eaff);
+  z-index:5;
+}
+
+.meteor{
+  position:absolute;
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 25%,#fff09a,#ff662b 45%,#851600);
+  box-shadow:0 0 15px #ff5228;
+}
+
+.enemy{
+  position:absolute;
+  width:48px;
+  height:38px;
+  background:linear-gradient(135deg,#ff37d4,#7127ff);
+  clip-path:polygon(50% 0,100% 100%,70% 75%,50% 100%,30% 75%,0 100%);
+  filter:drop-shadow(0 0 10px #ff37d4);
+}
+
+.coin{
+  position:absolute;
+  width:27px;
+  height:27px;
+  border-radius:50%;
+  background:#ffd21c;
+  color:#9b6200;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  box-shadow:0 0 12px #ffd21c;
+}
+
+.power{
+  position:absolute;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:#00ff91;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:20px;
+  box-shadow:0 0 15px #00ff91;
+}
+
+.bullet{
+  position:absolute;
+  width:6px;
+  height:18px;
+  background:#00ffff;
+  border-radius:5px;
+  box-shadow:0 0 10px #00ffff;
+}
+
+#controls{
+  position:absolute;
+  bottom:12px;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:space-around;
+  z-index:30;
+}
+
+.control{
+  width:100px;
+  height:55px;
+  border-radius:15px;
+  background:rgba(255,255,255,.13);
+  border:1px solid rgba(255,255,255,.3);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  user-select:none;
+}
+
+#screen{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.82);
+  z-index:100;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:20px;
+}
+
+#screen h1{
+  font-size:34px;
+  color:#00eaff;
+  text-shadow:0 0 15px #00eaff;
+  margin-bottom:12px;
+}
+
+button{
+  border:0;
+  padding:13px 25px;
+  margin:7px;
+  border-radius:12px;
+  font-size:17px;
+  font-weight:bold;
+  background:linear-gradient(135deg,#00eaff,#536cff);
+  color:white;
+}
+
+.shopItem{
+  width:280px;
+  padding:12px;
+  margin:7px;
+  border:1px solid #46518c;
+  border-radius:12px;
+  background:#121733;
+}
+
+.shopItem button{
+  margin:5px;
+  padding:8px 15px;
+  font-size:14px;
+}
+
+#shop{
+  display:none;
+}
+
+.small{
+  font-size:13px;
+  opacity:.8;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <div id="hud">
+    <div>⭐ <span id="score">0</span></div>
+    <div>🪙 <span id="coins">0</span></div>
+    <div>❤️ <span id="lives">3</span></div>
+    <div>🏆 L<span id="level">1</span></div>
+  </div>
+
+  <div id="player"></div>
+
+  <div id="controls">
+    <div class="control" id="left">⬅️</div>
+    <div class="control" id="fire">🔥</div>
+    <div class="control" id="right">➡️</div>
+  </div>
+
+  <div id="screen">
+
+    <h1>🚀 GALAXY WARS</h1>
+
+    <p>Survive the galaxy!</p>
+    <br>
+
+    <button onclick="startGame()">🚀 START GAME</button>
+    <button onclick="openShop()">🛒 SHOP</button>
+
+    <p class="small">Move: ⬅️ ➡️ | Fire: 🔥</p>
+
+  </div>
+
+  <div id="shop">
+
+    <h1>🛒 SPACE SHOP</h1>
+
+    <p>🪙 Coins: <span id="shopCoins">0</span></p>
+
+    <div class="shopItem">
+      ❤️ Extra Life
+      <br>
+      <button onclick="buyLife()">Buy — 30 🪙</button>
+    </div>
+
+    <div class="shopItem">
+      ⚡ Speed Upgrade
+      <br>
+      Level: <span id="speedLevel">0</span>
+      <br>
+      <button onclick="buySpeed()">Buy — 50 🪙</button>
+    </div>
+
+    <div class="shopItem">
+      🔫 Weapon Upgrade
+      <br>
+      Level: <span id="weaponLevel">0</span>
+      <br>
+      <button onclick="buyWeapon()">Buy — 75 🪙</button>
+    </div>
+
+    <button onclick="closeShop()">⬅️ BACK</button>
+
+  </div>
+
+</div>
+
+<script>
+
+/* =========================
+   GAME DATA
+========================= */
+
+let score=0;
+let coins=Number(localStorage.getItem("coins"))||0;
+
+let best=Number(localStorage.getItem("best"))||0;
+
+let lives=3;
+let level=1;
+
+let playerX=50;
+
+let running=false;
+
+let speed=3;
+
+let speedUpgrade=
+Number(localStorage.getItem("speedUpgrade"))||0;
+
+let weaponUpgrade=
+Number(localStorage.getItem("weaponUpgrade"))||0;
+
+let fireCooldown=false;
+
+let meteorTimer;
+let enemyTimer;
+let coinTimer;
+let powerTimer;
+
+
+/* =========================
+   ELEMENTS
+========================= */
+
+const game=document.getElementById("game");
+const player=document.getElementById("player");
+
+const screen=document.getElementById("screen");
+const shop=document.getElementById("shop");
+
+const scoreText=document.getElementById("score");
+const coinText=document.getElementById("coins");
+const livesText=document.getElementById("lives");
+const levelText=document.getElementById("level");
+
+const shopCoins=document.getElementById("shopCoins");
+
+const speedLevel=document.getElementById("speedLevel");
+const weaponLevel=document.getElementById("weaponLevel");
+
+
+/* =========================
+   SOUND
+========================= */
+
+const audioCtx=
+new (window.AudioContext||window.webkitAudioContext)();
+
+function sound(freq,duration=0.08){
+
+  try{
+
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
+
+    osc.frequency.value=freq;
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    gain.gain.value=.08;
+
+    osc.start();
+
+    setTimeout(()=>{
+      osc.stop();
+    },duration*1000);
+
+  }catch(e){}
+
+}
+
+
+/* =========================
+   UPDATE HUD
+========================= */
+
+function updateHUD(){
+
+  scoreText.textContent=score;
+  coinText.textContent=coins;
+  livesText.textContent=lives;
+  levelText.textContent=level;
+
+}
+
+
+/* =========================
+   PLAYER
+========================= */
+
+function movePlayer(direction){
+
+  if(!running)return;
+
+  playerX+=direction*(5+speedUpgrade);
+
+  if(playerX<7)playerX=7;
+  if(playerX>93)playerX=93;
+
+  player.style.left=playerX+"%";
+
+}
+
+
+/* =========================
+   KEYBOARD
+========================= */
+
+document.addEventListener("keydown",e=>{
+
+  if(e.key==="ArrowLeft"||e.key==="a")
+    movePlayer(-1);
+
+  if(e.key==="ArrowRight"||e.key==="d")
+    movePlayer(1);
+
+  if(e.code==="Space")
+    shoot();
+
+});
+
+
+/* =========================
+   TOUCH CONTROLS
+========================= */
+
+document.getElementById("left")
+.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  movePlayer(-1);
+});
+
+document.getElementById("right")
+.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  movePlayer(1);
+});
+
+document.getElementById("fire")
+.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  shoot();
+});
+
+
+/* =========================
+   SHOOT
+========================= */
+
+function shoot(){
+
+  if(!running||fireCooldown)return;
+
+  fireCooldown=true;
+
+  sound(700,.08);
+
+  const bullet=document.createElement("div");
+
+  bullet.className="bullet";
+
+  bullet.style.left=
+  (playerX-0.5)+"%";
+
+  bullet.style.bottom="140px";
+
+  game.appendChild(bullet);
+
+  let y=game.clientHeight-140;
+
+  const interval=setInterval(()=>{
+
+    y-=10;
+
+    bullet.style.top=y+"px";
+
+    if(y<0){
+
+      clearInterval(interval);
+      bullet.remove();
+
+    }
+
+    document.querySelectorAll(".meteor,.enemy")
+    .forEach(target=>{
+
+      const a=bullet.getBoundingClientRect();
+      const b=target.getBoundingClientRect();
+
+      if(
+        a.left<b.right &&
+        a.right>b.left &&
+        a.top<b.bottom &&
+        a.bottom>b.top
+      ){
+
+        target.remove();
+        bullet.remove();
+
+        clearInterval(interval);
+
+        score+=10;
+
+        sound(1000,.1);
+
+        updateLevel();
+
+        updateHUD();
+
+      }
+
+    });
+
+  },20);
+
+  setTimeout(()=>{
+    fireCooldown=false;
+  },300-Math.min(weaponUpgrade*40,200));
+
+}
+
+
+/* =========================
+   METEOR
+========================= */
+
+function createMeteor(){
+
+  if(!running)return;
+
+  const meteor=document.createElement("div");
+
+  meteor.className="meteor";
+
+  meteor.style.left=
+  (Math.random()*90+3)+"%";
+
+  meteor.style.top="-50px";
+
+  game.appendChild(meteor);
+
+  let y=-50;
+
+  const fall=setInterval(()=>{
+
+    if(!running){
+
+      clearInterval(fall);
+      meteor.remove();
+      return;
+
+    }
+
+    y+=speed;
+
+    meteor.style.top=y+"px";
+
+    if(collision(meteor,player)){
+
+      clearInterval(fall);
+      meteor.remove();
+
+      hit();
+
+    }
+
+    if(y>game.clientHeight){
+
+      clearInterval(fall);
+      meteor.remove();
+
+      score++;
+
+      updateLevel();
+      updateHUD();
+
+    }
+
+  },20);
+
+}
+
+
+/* =========================
+   ENEMY
+========================= */
+
+function createEnemy(){
+
+  if(!running)return;
+
+  const enemy=document.createElement("div");
+
+  enemy.className="enemy";
+
+  enemy.style.left=
+  (Math.random()*88+4)+"%";
+
+  enemy.style.top="-50px";
+
+  game.appendChild(enemy);
+
+  let y=-50;
+
+  const enemySpeed=
+  speed+1+Math.random()*2;
+
+  const fall=setInterval(()=>{
+
+    if(!running){
+
+      clearInterval(fall);
+      enemy.remove();
+      return;
+
+    }
+
+    y+=enemySpeed;
+
+    enemy.style.top=y+"px";
+
+    if(collision(enemy,player)){
+
+      clearInterval(fall);
+      enemy.remove();
+
+      hit();
+
+    }
+
+    if(y>game.clientHeight){
+
+      clearInterval(fall);
+      enemy.remove();
+
+      score+=5;
+
+      updateLevel();
+      updateHUD();
+
+    }
+
+  },20);
+
+}
+
+
+/* =========================
+   COINS
+========================= */
+
+function createCoin(){
+
+  if(!running)return;
+
+  const coin=document.createElement("div");
+
+  coin.className="coin";
+
+  coin.textContent="★";
+
+  coin.style.left=
+  (Math.random()*90+3)+"%";
+
+  coin.style.top="-40px";
+
+  game.appendChild(coin);
+
+  let y=-40;
+
+  const fall=setInterval(()=>{
+
+    if(!running){
+
+      clearInterval(fall);
+      coin.remove();
+      return;
+
+    }
+
+    y+=speed;
+
+    coin.style.top=y+"px";
+
+    if(collision(coin,player)){
+
+      coins++;
+
+      localStorage.setItem("coins",coins);
+
+      sound(1200,.1);
+
+      coin.remove();
+      clearInterval(fall);
+
+      updateHUD();
+
+    }
+
+    if(y>game.clientHeight){
+
+      coin.remove();
+      clearInterval(fall);
+
+    }
+
+  },20);
+
+}
+
+
+/* =========================
+   POWER UPS
+========================= */
+
+function createPower(){
+
+  if(!running)return;
+
+  const power=document.createElement("div");
+
+  power.className="power";
+
+  power.textContent="⚡";
+
+  power.style.left=
+  (Math.random()*88+4)+"%";
+
+  power.style.top="-40px";
+
+  game.appendChild(power);
+
+  let y=-40;
+
+  const fall=setInterval(()=>{
+
+    if(!running){
+
+      clearInterval(fall);
+      power.remove();
+      return;
+
+    }
+
+    y+=speed;
+
+    power.style.top=y+"px";
+
+    if(collision(power,player)){
+
+      power.remove();
+      clearInterval(fall);
+
+      sound(1500,.2);
+
+      activatePower();
+
+    }
+
+    if(y>game.clientHeight){
+
+      power.remove();
+      clearInterval(fall);
+
+    }
+
+  },20);
+
+}
+
+
+/* =========================
+   POWER EFFECT
+========================= */
+
+function activatePower(){
+
+  const old=speed;
+
+  speed=Math.max(1,speed-1.5);
+
+  player.style.filter=
+  "drop-shadow(0 0 25px #00ff91)";
+
+  setTimeout(()=>{
+
+    speed=old;
+
+    player.style.filter=
+    "drop-shadow(0 0 12px #00eaff)";
+
+  },5000);
+
+}
+
+
+/* =========================
+   COLLISION
+========================= */
+
+function collision(a,b){
+
+  const A=a.getBoundingClientRect();
+  const B=b.getBoundingClientRect();
+
+  return(
+    A.left<B.right &&
+    A.right>B.left &&
+    A.top<B.bottom &&
+    A.bottom>B.top
+  );
+
+}
+
+
+/* =========================
+   PLAYER HIT
+========================= */
+
+function hit(){
+
+  lives--;
+
+  sound(150,.3);
+
+  player.style.transform=
+  "translateX(-50%) scale(1.3)";
+
+  setTimeout(()=>{
+    player.style.transform=
+    "translateX(-50%) scale(1)";
+  },200);
+
+  updateHUD();
+
+  if(lives<=0){
+
+    endGame();
+
+  }
+
+}
+
+
+/* =========================
+   LEVEL SYSTEM
+========================= */
+
+function updateLevel(){
+
+  const newLevel=
+  Math.floor(score/50)+1;
+
+  if(newLevel>level){
+
+    level=newLevel;
+
+    speed+=.5;
+
+    sound(900,.3);
+
+  }
+
+  updateHUD();
+
+}
+
+
+/* =========================
+   START GAME
+========================= */
+
+function startGame(){
+
+  if(audioCtx.state==="suspended")
+    audioCtx.resume();
+
+  document
+  .querySelectorAll(".meteor,.enemy,.coin,.power,.bullet")
+  .forEach(x=>x.remove());
+
+  score=0;
+  lives=3;
+  level=1;
+
+  speed=3+(speedUpgrade*.2);
+
+  playerX=50;
+
+  player.style.left="50%";
+
+  updateHUD();
+
+  screen.style.display="none";
+
+  shop.style.display="none";
+
+  running=true;
+
+  meteorTimer=setInterval(
+    createMeteor,
+    Math.max(300,750-level*25)
+  );
+
+  enemyTimer=setInterval(
+    createEnemy,
+    Math.max(700,1800-level*40)
+  );
+
+  coinTimer=setInterval(
+    createCoin,
+    1200
+  );
+
+  powerTimer=setInterval(
+    createPower,
+    7000
+  );
+
+}
+
+
+/* =========================
+   END GAME
+========================= */
+
+function endGame(){
+
+  running=false;
+
+  clearInterval(meteorTimer);
+  clearInterval(enemyTimer);
+  clearInterval(coinTimer);
+  clearInterval(powerTimer);
+
+  if(score>best){
+
+    best=score;
+
+    localStorage.setItem("best",best);
+
+  }
+
+  screen.innerHTML=`
+
+    <h1>💥 GAME OVER</h1>
+
+    <p>⭐ Score: ${score}</p>
+
+    <p>🪙 Coins: ${coins}</p>
+
+    <p>🏆 Best: ${best}</p>
+
+    <br>
+
+    <button onclick="startGame()">
+      🔄 PLAY AGAIN
+    </button>
+
+    <button onclick="openShop()">
+      🛒 SHOP
+    </button>
+
+  `;
+
+  screen.style.display="flex";
+
+}
+
+
+/* =========================
+   SHOP
+========================= */
+
+function openShop(){
+
+  screen.style.display="none";
+
+  shop.style.display="block";
+
+  shop.style.position="absolute";
+  shop.style.inset="0";
+  shop.style.zIndex="200";
+  shop.style.background="#080b18";
+  shop.style.textAlign="center";
+  shop.style.paddingTop="70px";
+
+  updateShop();
+
+}
+
+
+function closeShop(){
+
+  shop.style.display="none";
+
+  screen.style.display="flex";
+
+}
+
+
+function updateShop(){
+
+  shopCoins.textContent=coins;
+
+  speedLevel.textContent=speedUpgrade;
+
+  weaponLevel.textContent=weaponUpgrade;
+
+}
+
+
+/* =========================
+   BUY LIFE
+========================= */
+
+function buyLife(){
+
+  if(coins<30){
+
+    alert("Not enough coins! 🪙");
+
+    return;
+
+  }
+
+  coins-=30;
+
+  localStorage.setItem("coins",coins);
+
+  updateShop();
+
+}
+
+
+/* =========================
+   BUY SPEED
+========================= */
+
+function buySpeed(){
+
+  if(coins<50){
+
+    alert("Not enough coins! 🪙");
+
+    return;
+
+  }
+
+  coins-=50;
+
+  speedUpgrade++;
+
+  localStorage.setItem(
+    "coins",coins
+  );
+
+  localStorage.setItem(
+    "speedUpgrade",
+    speedUpgrade
+  );
+
+  updateShop();
+
+}
+
+
+/* =========================
+   BUY WEAPON
+========================= */
+
+function buyWeapon(){
+
+  if(coins<75){
+
+    alert("Not enough coins! 🪙");
+
+    return;
+
+  }
+
+  coins-=75;
+
+  weaponUpgrade++;
+
+  localStorage.setItem(
+    "coins",coins
+  );
+
+  localStorage.setItem(
+    "weaponUpgrade",
+    weaponUpgrade
+  );
+
+  updateShop();
+
+}
+
+
+/* =========================
+   INITIAL
+========================= */
+
+updateHUD();
+
+</script>
+
+</body>
+</html>
